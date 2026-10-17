@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>筑安智检演示</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -14,16 +15,16 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --concrete:#1b2329; --panel:#232d34; --ink:#e7ebee; --muted:#9aa7b0; --steel:#0f171c; --line:#38444c; --paper:#2a343b;
-}}
-:root[data-theme="dark"]{--concrete:#1b2329; --panel:#232d34; --ink:#e7ebee; --muted:#9aa7b0; --steel:#0f171c; --line:#38444c; --paper:#2a343b;}
+color-scheme:dark}}
+:root[data-theme="dark"]{color-scheme:dark;--concrete:#1b2329; --panel:#232d34; --ink:#e7ebee; --muted:#9aa7b0; --steel:#0f171c; --line:#38444c; --paper:#2a343b;}
 *{box-sizing:border-box}
 body{margin:0;background:var(--concrete);color:var(--ink);font:15px/1.6 "Noto Sans SC",system-ui,sans-serif}
 .num{font-family:"Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
-header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:18px 24px 14px;max-width:1360px;margin:0 auto}
+header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding-block:18px 14px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));max-width:1360px;margin:0 auto}
 header h1{margin:0;font-size:26px;font-weight:700;letter-spacing:.02em}
 header p{margin:0;color:var(--muted);font-size:14px}
 .tape{height:10px;background:repeating-linear-gradient(-45deg,var(--tape) 0 14px,#1a1a1a 14px 28px)}
-main{max-width:1360px;margin:0 auto;padding:20px 24px 48px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px}
+main{max-width:1360px;margin:0 auto;padding-block:20px 48px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px}
 .monitor{background:var(--steel);border-radius:4px;padding:10px;position:relative}
 .monitor canvas{width:100%;height:auto;display:block;border-radius:2px;background:#5d6a63}
 .osd{display:flex;justify-content:space-between;color:#cfd8dd;font-size:13px;padding:4px 4px 8px}
@@ -72,7 +73,7 @@ aside{display:flex;flex-direction:column;gap:20px;min-width:0}
 .ticket h3{font-size:14px;margin:0 0 6px}
 .ticket p{margin:0 0 12px}
 @media (max-width:960px){main{grid-template-columns:1fr}.ticket .body{grid-template-columns:1fr}}
-@media (max-width:520px){header,main{padding-left:16px;padding-right:16px}.stats b{font-size:28px}}
+@media (max-width:520px){header,main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}.stats b{font-size:28px}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
