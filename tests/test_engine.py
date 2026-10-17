@@ -69,10 +69,28 @@ def test_persistent_violation_reported_once_with_cooldown():
 def test_compound_risk_escalates_to_major():
     eng = HazardEngine(zones=[CRANE])
     hz = run(eng, frames(lambda t: person(600, helmet=False), 5))
-    crane = [h for h in hz if h.rule_id == "R03"][0]
-    assert crane.level == "重大" and "复合" in crane.title
-    plain = [h for h in hz if h.rule_id == "R01"][0]
-    assert "复合" not in plain.title  # 复合风险只升级一条
+    # 吊装区规则 1 秒先确认（较大）；安全帽规则 2 秒确认后，再发一条复合升级告警（重大）
+    seq = [(h.rule_id, h.level) for h in hz]
+    assert seq == [("R03", "较大"), ("R03", "重大"), ("R01", "较大")]
+    up = hz[1]
+    assert "复合" in up.title and up.score == 9.0
+    assert sum("复合" in h.title for h in hz) == 1
+
+
+def test_compound_when_already_confirmed_sends_only_escalation():
+    eng = HazardEngine(zones=[CRANE])
+    # 先在区外未戴帽 3 秒（安全帽规则已确认），再走进吊装区
+    walk = lambda t: person(min(600, 100 + max(0.0, t - 3) * 125), helmet=False)
+    hz = run(eng, frames(walk, 10))
+    crane = [h for h in hz if h.rule_id == "R03"]
+    assert len(crane) == 1 and crane[0].level == "重大"
+
+
+def test_sparse_flips_do_not_chain_into_alarm():
+    """每隔 1 秒误检一帧：只看持续时长会被串成一段，加上命中占比后不报警。"""
+    eng = HazardEngine()
+    fs = frames(lambda t: person(100, helmet=abs(t - round(t)) > 0.01), 10)
+    assert run(eng, fs) == []
 
 
 def test_zone_with_helmet_is_not_compound():
@@ -106,3 +124,19 @@ def test_sample_scenario():
     rules = {h.rule_id for h in hz}
     assert rules == {"R01", "R02", "R03", "R04", "R05"}
     assert sum(h.level == "重大" for h in hz) == 1
+
+
+def test_second_episode_within_old_cooldown_is_reported():
+    """摘帽 5 秒→戴上 15 秒→再摘帽：片段去重会报两次，固定 60 秒冷却会吞掉第二次。"""
+    off = lambda t: person(100, helmet=not (t < 5 or 20 <= t < 25))
+    assert [h.rule_id for h in run(HazardEngine(), frames(off, 30))] == ["R01", "R01"]
+    from siteguard.evaluate import strategy_config
+    cd = HazardEngine(config=strategy_config("ours_cd"))
+    assert [h.rule_id for h in run(cd, frames(off, 30))] == ["R01"]
+
+
+def test_simulation_is_reproducible():
+    from siteguard.sim import generate
+    a, b = generate(seed=3, duration=60), generate(seed=3, duration=60)
+    assert [(e.kind, e.worker, e.start) for e in a.gt_events] == [(e.kind, e.worker, e.start) for e in b.gt_events]
+    assert a.frames[100].detections == b.frames[100].detections

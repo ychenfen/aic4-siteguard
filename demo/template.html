@@ -115,7 +115,7 @@ aside{display:flex;flex-direction:column;gap:20px;min-width:0}
     <div class="feed">
       <h2>告警与整改单</h2>
       <ol id="feed"></ol>
-      <div class="empty" id="empty">点“播放”开始。违规持续到规则设定的时长才会生成整改单，单帧误检不会报警。</div>
+      <div class="empty" id="empty">点“播放”开始。违规要持续到设定时长、且这段时间里大部分帧都判定违规，才会生成整改单；单帧误检不会报警。</div>
     </div>
   </aside>
 
@@ -146,7 +146,7 @@ function associate(dets){
 }
 class Engine{
   constructor(){this.rules=Object.fromEntries(RULES.rules.map(r=>[r.rule_id,r]));this.levels=[...RULES.levels].sort((a,b)=>b.min_score-a.min_score);
-    this.tracks=[];this.nid=1;this.active=new Map();this.emit=new Map();this.seq=0}
+    this.tracks=[];this.nid=1;this.active=new Map();this.emit=new Map();this.seq=0;this.frame=-1}
   level(s){return this.levels.find(l=>s>=l.min_score)||this.levels.at(-1)}
   track(ws){const un=[...this.tracks];for(const w of ws){let b=null,bi=.3;for(const t of un){const s=iou(w.bbox,t.bbox);if(s>bi){b=t;bi=s}}
     if(b){un.splice(un.indexOf(b),1);b.bbox=w.bbox;b.miss=0;w.id=b.id}else{const t={id:this.nid++,bbox:w.bbox,miss:0};this.tracks.push(t);w.id=t.id}}
@@ -160,19 +160,31 @@ class Engine{
         if(inPoly([(w.bbox[0]+w.bbox[2])/2,w.bbox[3]],z.polygon))hits.set(rid+"|"+w.id,[w.bbox,z.zone_id])}));
       else if(r.type==="fire_smoke"){const d=f.dets.find(d=>(d.label==="fire"||d.label==="smoke")&&d.conf>=.4);if(d)hits.set(rid+"|fire",[d.bbox,null])}
     }
-    for(const[k,[bbox,zid]]of hits){const s=this.active.get(k);if(!s||now-s.last>1.5)this.active.set(k,{start:now,last:now,bbox,zid});else Object.assign(s,{last:now,bbox,zid})}
+    this.frame++;
+    for(const[k,[bbox,zid]]of hits){const s=this.active.get(k);
+      if(!s||now-s.last>1.5)this.active.set(k,{start:now,last:now,sf:this.frame,hits:1,bbox,zid,emitted:false,esc:new Set()});
+      else{Object.assign(s,{last:now,bbox,zid});s.hits++}}
     for(const[k,s]of this.active)if(now-s.last>1.5)this.active.delete(k);
-    const out=[];
-    for(const k of hits.keys()){const[rid,subj]=k.split("|"),r=this.rules[rid],s=this.active.get(k);
-      if(now-s.start<r.confirm_seconds)continue;const le=this.emit.get(k);if(le!=null&&now-le<r.cooldown_seconds)continue;
-      let title=r.title,bonus=0;
-      for(const c of RULES.compound){const lead=c.when.reduce((a,b)=>this.rules[a].severity>=this.rules[b].severity?a:b);
-        if(rid===lead&&c.when.filter(o=>o!==rid).every(o=>this.active.has(o+"|"+subj))){title=c.title;bonus=c.bonus}}
-      const score=r.severity+bonus;this.emit.set(k,now);this.seq++;
-      out.push({id:this.seq,rid,title,ts:now,subj,bbox:s.bbox,zid:s.zid,score,level:this.level(score),standard:r.standard,measure:r.measure})}
+    const D=RULES.dedup||{},rearm=D.rearm_seconds??10,repeat=D.repeat_seconds??300;
+    const ok=k=>{const s=this.active.get(k);if(!s)return false;const r=this.rules[k.split("|")[0]];
+      return now-s.start>=r.confirm_seconds&&s.hits/(this.frame-s.sf+1)>=(r.confirm_ratio??RULES.confirm_ratio??0)};
+    const cooled=(k,c)=>{const le=this.emit.get(k);return le==null||now-le>=c};
+    const out=[],mk=(rid,subj,title,score)=>{const r=this.rules[rid],s=this.active.get(rid+"|"+subj);this.seq++;
+      return{id:this.seq,rid,title,ts:now,subj,bbox:s.bbox,zid:s.zid,score,level:this.level(score),standard:r.standard,measure:r.measure}};
+    // 复合风险升级
+    RULES.compound.forEach((c,ci)=>{const lead=c.when.reduce((a,b)=>this.rules[a].severity>=this.rules[b].severity?a:b);
+      for(const k of hits.keys()){const[rid,subj]=k.split("|");if(rid!==lead)continue;
+        if(!c.when.every(o=>ok(o+"|"+subj)))continue;const s=this.active.get(k),ck="C"+ci+"|"+subj;
+        if(s.esc.has(ci)||!cooled(ck,rearm))continue;s.esc.add(ci);this.emit.set(ck,now);
+        if(!s.emitted){s.emitted=true;this.emit.set(k,now)}
+        out.push(mk(lead,subj,c.title,this.rules[lead].severity+c.bonus))}});
+    // 单条规则：一段连续违规只报一次，持续违规定时提醒
+    for(const k of hits.keys()){const[rid,subj]=k.split("|"),s=this.active.get(k);if(!ok(k))continue;
+      if(!cooled(k,s.emitted?repeat:rearm))continue;s.emitted=true;this.emit.set(k,now);
+      out.push(mk(rid,subj,this.rules[rid].title,this.rules[rid].severity))}
     // 供画面使用：每个人当前状态
     const pending=new Set(),confirmed=new Set();
-    for(const[k,s]of this.active){const[rid,subj]=k.split("|");(this.emit.has(k)&&this.emit.get(k)>=s.start?confirmed:pending).add(subj)}
+    for(const[k,s]of this.active){const subj=k.split("|")[1];(s.emitted?confirmed:pending).add(subj)}
     return{ws,out,pending,confirmed};
   }
 }
