@@ -1,0 +1,19 @@
+[project]
+name = "siteguard"
+version = "0.1.0"
+description = "筑安智检：施工现场安全隐患 AI 巡检与整改闭环系统（AIC4 人工智能+场景·建造）"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+yolo = ["ultralytics>=8.0"]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["siteguard"]
+
+[tool.setuptools.package-data]
+siteguard = ["rules.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

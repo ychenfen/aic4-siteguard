@@ -1,0 +1,69 @@
+{
+  "_note": "规则可按项目配置。standard 字段为依据的规范名称与检查项，正式提交前请对照规范原文核对条款编号。",
+  "levels": [
+    {"name": "重大", "min_score": 8.0, "deadline_hours": 0, "action": "立即停工整改"},
+    {"name": "较大", "min_score": 5.0, "deadline_hours": 4, "action": "限时整改"},
+    {"name": "一般", "min_score": 0.0, "deadline_hours": 24, "action": "当日整改"}
+  ],
+  "rules": [
+    {
+      "rule_id": "R01",
+      "title": "作业人员未佩戴安全帽",
+      "type": "no_helmet",
+      "severity": 5,
+      "confirm_seconds": 2.0,
+      "cooldown_seconds": 60,
+      "standard": "JGJ59-2011《建筑施工安全检查标准》高处作业检查评分表·安全帽项；GB 2811《头部防护 安全帽》",
+      "measure": "立即责令该人员停止作业，佩戴合格安全帽并系紧下颏带；对所在班组进行班前安全教育。"
+    },
+    {
+      "rule_id": "R02",
+      "title": "作业人员未穿反光背心",
+      "type": "no_vest",
+      "severity": 2,
+      "confirm_seconds": 3.0,
+      "cooldown_seconds": 120,
+      "standard": "项目现场安全管理规定（企业/项目自定条款，可配置）",
+      "measure": "提醒该人员穿戴反光背心；在车辆通行区、夜间作业区重点检查。"
+    },
+    {
+      "rule_id": "R03",
+      "title": "人员进入塔吊回转/吊装警戒区",
+      "type": "zone_intrusion",
+      "zone_kinds": ["crane", "lifting"],
+      "severity": 6,
+      "confirm_seconds": 1.0,
+      "cooldown_seconds": 30,
+      "standard": "JGJ59-2011 起重吊装检查评分表·警戒项；GB 6067.1《起重机械安全规程》",
+      "measure": "立即疏散警戒区内人员，暂停吊装作业；核查警戒线、警示标志与信号指挥人员是否到位。"
+    },
+    {
+      "rule_id": "R04",
+      "title": "人员在基坑临边危险区域滞留",
+      "type": "zone_intrusion",
+      "zone_kinds": ["pit"],
+      "severity": 5,
+      "confirm_seconds": 5.0,
+      "cooldown_seconds": 60,
+      "standard": "JGJ59-2011 基坑工程检查评分表·临边防护项；JGJ 120《建筑基坑支护技术规程》",
+      "measure": "劝离临边人员；检查临边防护栏杆高度、挡脚板及夜间警示灯。"
+    },
+    {
+      "rule_id": "R05",
+      "title": "施工现场出现明火/烟雾",
+      "type": "fire_smoke",
+      "severity": 7,
+      "confirm_seconds": 2.0,
+      "cooldown_seconds": 60,
+      "standard": "GB 50720-2011《建设工程施工现场消防安全技术规范》",
+      "measure": "立即核实火源，确认是否办理动火审批；就近取用灭火器材，必要时启动消防应急预案。"
+    }
+  ],
+  "compound": [
+    {
+      "when": ["R01", "R03"],
+      "title": "未戴安全帽进入吊装警戒区（复合风险）",
+      "bonus": 3.0
+    }
+  ]
+}

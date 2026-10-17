@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>筑安智检演示</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --concrete:#d5d8db; --panel:#eef0f1; --ink:#1d2a33; --muted:#5b6872;
+  --steel:#22323d; --tape:#f2c200; --major:#c8243a; --serious:#d77a00; --general:#3a6ea5; --ok:#2f7d4f;
+  --line:#b9bec3; --paper:#fbfbf8;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --concrete:#1b2329; --panel:#232d34; --ink:#e7ebee; --muted:#9aa7b0; --steel:#0f171c; --line:#38444c; --paper:#2a343b;
+}}
+:root[data-theme="dark"]{--concrete:#1b2329; --panel:#232d34; --ink:#e7ebee; --muted:#9aa7b0; --steel:#0f171c; --line:#38444c; --paper:#2a343b;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--concrete);color:var(--ink);font:15px/1.6 "Noto Sans SC",system-ui,sans-serif}
+.num{font-family:"Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}
+header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:18px 24px 14px;max-width:1360px;margin:0 auto}
+header h1{margin:0;font-size:26px;font-weight:700;letter-spacing:.02em}
+header p{margin:0;color:var(--muted);font-size:14px}
+.tape{height:10px;background:repeating-linear-gradient(-45deg,var(--tape) 0 14px,#1a1a1a 14px 28px)}
+main{max-width:1360px;margin:0 auto;padding:20px 24px 48px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px}
+.monitor{background:var(--steel);border-radius:4px;padding:10px;position:relative}
+.monitor canvas{width:100%;height:auto;display:block;border-radius:2px;background:#5d6a63}
+.osd{display:flex;justify-content:space-between;color:#cfd8dd;font-size:13px;padding:4px 4px 8px}
+.osd .rec{color:#ff5a5a}
+.controls{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 14px;border-radius:3px;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--tape);outline-offset:2px}
+button.primary{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.timeline{position:relative;flex:1;min-width:200px;height:34px}
+.timeline input{width:100%;margin:0;position:absolute;top:8px}
+.marks{position:absolute;inset:0;pointer-events:none}
+.marks i{position:absolute;top:0;width:3px;height:8px;border-radius:1px}
+.clock{font-size:22px;min-width:64px;text-align:right}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;margin-right:6px;border-radius:2px;background:var(--c);vertical-align:-1px}
+aside{display:flex;flex-direction:column;gap:20px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border-radius:4px;border:1px solid var(--line)}
+.stats div{padding:12px 14px;border-right:1px solid var(--line)}
+.stats div:last-child{border-right:0}
+.stats b{display:block;font-size:34px;line-height:1}
+.stats small{color:var(--muted)}
+.feed{background:var(--panel);border:1px solid var(--line);border-radius:4px;flex:1;min-height:260px;display:flex;flex-direction:column}
+.feed h2,.ticket h2{font-size:16px;margin:0;padding:12px 16px;border-bottom:1px solid var(--line)}
+.feed ol{list-style:none;margin:0;padding:0;overflow:auto;max-height:420px}
+.feed li{border-bottom:1px solid var(--line)}
+.feed li button{all:unset;display:grid;grid-template-columns:52px 1fr;gap:4px 10px;padding:10px 16px;width:100%;box-sizing:border-box;cursor:pointer}
+.feed li button:focus-visible{outline:3px solid var(--tape);outline-offset:-3px}
+.feed li.sel{background:linear-gradient(90deg,var(--tape) 0 5px,transparent 5px)}
+.feed .t{font-size:18px;color:var(--muted)}
+.feed .lv{font-size:12px;font-weight:700;color:#fff;padding:0 6px;border-radius:2px;justify-self:start}
+.feed .ti{grid-column:2}
+.feed .st{grid-column:2;font-size:12px;color:var(--muted)}
+.empty{padding:20px 16px;color:var(--muted)}
+.ticket{grid-column:1/-1;background:var(--paper);border:1px solid var(--line);border-radius:4px}
+.ticket .body{padding:18px 20px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px}
+.ticket table{border-collapse:collapse;width:100%;font-size:14px}
+.ticket th,.ticket td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.ticket th{width:86px;color:var(--muted);font-weight:500;background:color-mix(in srgb,var(--panel) 60%,transparent)}
+.ticket .flow{display:flex;gap:0;margin:0 0 14px;padding:0;list-style:none}
+.ticket .flow li{flex:1;text-align:center;font-size:13px;padding:6px 0;border-bottom:3px solid var(--line);color:var(--muted)}
+.ticket .flow li.done{border-color:var(--ok);color:var(--ink)}
+.ticket .flow li.cur{border-color:var(--tape);color:var(--ink);font-weight:700}
+.ticket .hist{font-size:13px;color:var(--muted);margin:12px 0 0;padding-left:18px}
+.ticket .acts{display:flex;gap:10px;flex-wrap:wrap}
+.ticket h3{font-size:14px;margin:0 0 6px}
+.ticket p{margin:0 0 12px}
+@media (max-width:960px){main{grid-template-columns:1fr}.ticket .body{grid-template-columns:1fr}}
+@media (max-width:520px){header,main{padding-left:16px;padding-right:16px}.stats b{font-size:28px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="tape" aria-hidden="true"></div>
+<header>
+  <h1>筑安智检</h1>
+  <p>施工现场安全隐患 AI 巡检与整改闭环 · 离线演示（回放 CAM-03 东区塔吊 30 秒检测数据）</p>
+</header>
+<main>
+  <section aria-label="监控画面">
+    <div class="monitor">
+      <div class="osd"><span id="cam"></span><span><span class="rec">● AI 巡检中</span>　<span class="num" id="osdTime"></span></span></div>
+      <canvas id="cv" width="1280" height="720" aria-label="工地监控画面，标出人员检测框与危险区域"></canvas>
+    </div>
+    <div class="controls">
+      <button class="primary" id="play">播放</button>
+      <button id="reset">从头开始</button>
+      <div class="timeline">
+        <input type="range" id="seek" min="0" max="30" step="0.2" value="0" aria-label="回放进度">
+        <div class="marks" id="marks"></div>
+      </div>
+      <span class="clock num" id="clock">0.0s</span>
+    </div>
+    <div class="legend">
+      <span style="--c:var(--ok)">装备齐全</span>
+      <span style="--c:var(--serious)">违规待确认</span>
+      <span style="--c:var(--major)">已确认隐患</span>
+      <span style="--c:var(--tape)">危险区域</span>
+    </div>
+  </section>
+
+  <aside>
+    <div class="stats" aria-live="polite">
+      <div><b class="num" id="sTotal">0</b><small>整改单</small></div>
+      <div><b class="num" id="sMajor" style="color:var(--major)">0</b><small>重大隐患</small></div>
+      <div><b class="num" id="sClosed">0</b><small>已闭环</small></div>
+    </div>
+    <div class="feed">
+      <h2>告警与整改单</h2>
+      <ol id="feed"></ol>
+      <div class="empty" id="empty">点“播放”开始。违规持续到规则设定的时长才会生成整改单，单帧误检不会报警。</div>
+    </div>
+  </aside>
+
+  <section class="ticket" id="ticket" hidden aria-live="polite"></section>
+</main>
+
+<script>
+const DATA = /*DATA*/null;
+const RULES = /*RULES*/null;
+
+// ---------- 引擎（与 siteguard/engine.py 同一套逻辑） ----------
+const area=b=>Math.max(0,b[2]-b[0])*Math.max(0,b[3]-b[1]);
+const inter=(a,b)=>Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0]))*Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));
+const iou=(a,b)=>{const i=inter(a,b),u=area(a)+area(b)-i;return u>0?i/u:0};
+const contain=(a,b)=>area(a)>0?inter(a,b)/area(a):0;
+function inPoly([x,y],p){let r=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const[xi,yi]=p[i],[xj,yj]=p[j];if((yi>y)!=(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)r=!r}return r}
+function headR(b){const h=b[3]-b[1],pad=(b[2]-b[0])*.1;return[b[0]-pad,b[1]-h*.08,b[2]+pad,b[1]+h*.28]}
+function torsoR(b){const h=b[3]-b[1];return[b[0],b[1]+h*.18,b[2],b[1]+h*.7]}
+function associate(dets){
+  const P=dets.filter(d=>d.label==="person"&&d.conf>=.35).sort((a,b)=>b.conf-a.conf);
+  const pick=(lab,reg,used)=>{let best=null,s0=.5;for(const d of dets){if(d.label!==lab||d.conf<.35||used.has(d))continue;const s=contain(d.bbox,reg);if(s>s0){best=d;s0=s}}return best};
+  const used=new Set();
+  return P.map(p=>{const w={bbox:p.bbox,helmet:null,vest:null};
+    if(p.bbox[3]-p.bbox[1]>=48){const hr=headR(p.bbox);let h=pick("helmet",hr,used);
+      if(h){w.helmet=true;used.add(h)}else{const n=pick("head",hr,used);if(n){w.helmet=false;used.add(n)}}
+      const v=pick("vest",torsoR(p.bbox),used);w.vest=!!v;if(v)used.add(v)}
+    return w});
+}
+class Engine{
+  constructor(){this.rules=Object.fromEntries(RULES.rules.map(r=>[r.rule_id,r]));this.levels=[...RULES.levels].sort((a,b)=>b.min_score-a.min_score);
+    this.tracks=[];this.nid=1;this.active=new Map();this.emit=new Map();this.seq=0}
+  level(s){return this.levels.find(l=>s>=l.min_score)||this.levels.at(-1)}
+  track(ws){const un=[...this.tracks];for(const w of ws){let b=null,bi=.3;for(const t of un){const s=iou(w.bbox,t.bbox);if(s>bi){b=t;bi=s}}
+    if(b){un.splice(un.indexOf(b),1);b.bbox=w.bbox;b.miss=0;w.id=b.id}else{const t={id:this.nid++,bbox:w.bbox,miss:0};this.tracks.push(t);w.id=t.id}}
+    un.forEach(t=>t.miss++);this.tracks=this.tracks.filter(t=>t.miss<=5);return ws}
+  process(f){
+    const ws=this.track(associate(f.dets)),hits=new Map(),now=f.ts;
+    for(const[rid,r]of Object.entries(this.rules)){
+      if(r.type==="no_helmet")ws.forEach(w=>{if(w.helmet===false)hits.set(rid+"|"+w.id,[w.bbox,null])});
+      else if(r.type==="no_vest")ws.forEach(w=>{if(w.vest===false)hits.set(rid+"|"+w.id,[w.bbox,null])});
+      else if(r.type==="zone_intrusion")DATA.zones.filter(z=>r.zone_kinds.includes(z.kind)).forEach(z=>ws.forEach(w=>{
+        if(inPoly([(w.bbox[0]+w.bbox[2])/2,w.bbox[3]],z.polygon))hits.set(rid+"|"+w.id,[w.bbox,z.zone_id])}));
+      else if(r.type==="fire_smoke"){const d=f.dets.find(d=>(d.label==="fire"||d.label==="smoke")&&d.conf>=.4);if(d)hits.set(rid+"|fire",[d.bbox,null])}
+    }
+    for(const[k,[bbox,zid]]of hits){const s=this.active.get(k);if(!s||now-s.last>1.5)this.active.set(k,{start:now,last:now,bbox,zid});else Object.assign(s,{last:now,bbox,zid})}
+    for(const[k,s]of this.active)if(now-s.last>1.5)this.active.delete(k);
+    const out=[];
+    for(const k of hits.keys()){const[rid,subj]=k.split("|"),r=this.rules[rid],s=this.active.get(k);
+      if(now-s.start<r.confirm_seconds)continue;const le=this.emit.get(k);if(le!=null&&now-le<r.cooldown_seconds)continue;
+      let title=r.title,bonus=0;
+      for(const c of RULES.compound){const lead=c.when.reduce((a,b)=>this.rules[a].severity>=this.rules[b].severity?a:b);
+        if(rid===lead&&c.when.filter(o=>o!==rid).every(o=>this.active.has(o+"|"+subj))){title=c.title;bonus=c.bonus}}
+      const score=r.severity+bonus;this.emit.set(k,now);this.seq++;
+      out.push({id:this.seq,rid,title,ts:now,subj,bbox:s.bbox,zid:s.zid,score,level:this.level(score),standard:r.standard,measure:r.measure})}
+    // 供画面使用：每个人当前状态
+    const pending=new Set(),confirmed=new Set();
+    for(const[k,s]of this.active){const[rid,subj]=k.split("|");(this.emit.has(k)&&this.emit.get(k)>=s.start?confirmed:pending).add(subj)}
+    return{ws,out,pending,confirmed};
+  }
+}
+
+// ---------- 场景渲染 ----------
+const cv=document.getElementById("cv"),g=cv.getContext("2d");
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function drawScene(state,f){
+  const W=cv.width,H=cv.height;
+  // 地面：远处偏浅，近处偏深，营造监控俯视角
+  const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,"#9aa29b");gr.addColorStop(.35,"#8a8f84");gr.addColorStop(1,"#6f7266");
+  g.fillStyle=gr;g.fillRect(0,0,W,H);
+  g.fillStyle="#b9bcb5";g.fillRect(0,0,W,150); // 远处在建楼体
+  g.fillStyle="#a3a7a0";for(let i=0;i<6;i++)g.fillRect(40+i*210,40,150,110);
+  g.strokeStyle="#7c8178";g.lineWidth=2;for(let i=0;i<6;i++)for(let r=0;r<4;r++)g.strokeRect(52+i*210,52+r*24,126,14);
+  // 道路
+  g.fillStyle="#5f625b";g.beginPath();g.moveTo(0,560);g.lineTo(W,600);g.lineTo(W,700);g.lineTo(0,680);g.fill();
+  // 危险区
+  for(const z of DATA.zones){g.beginPath();z.polygon.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();
+    g.fillStyle=z.kind==="pit"?"rgba(60,45,30,.55)":"rgba(242,194,0,.16)";g.fill();
+    g.setLineDash([16,10]);g.strokeStyle="#f2c200";g.lineWidth=3;g.stroke();g.setLineDash([]);
+    const[x,y]=z.polygon[0];g.fillStyle="#f2c200";g.font="600 20px 'Noto Sans SC'";g.fillText(z.name,x+8,y+26)}
+  // 塔吊
+  g.strokeStyle="#d9a400";g.lineWidth=6;g.beginPath();g.moveTo(900,400);g.lineTo(900,60);g.lineTo(1260,60);g.moveTo(900,60);g.lineTo(620,60);g.stroke();
+  g.lineWidth=2;g.beginPath();g.moveTo(1050,60);g.lineTo(1050,250);g.stroke();g.fillStyle="#4b4f48";g.fillRect(1030,250,40,24);
+  // 烟雾
+  f.dets.filter(d=>d.label==="smoke").forEach(d=>{const[x1,y1,x2,y2]=d.bbox;for(let i=0;i<7;i++){g.fillStyle="rgba(230,230,230,.35)";g.beginPath();
+    g.arc(x1+(x2-x1)*(.2+.1*i),y2-(y2-y1)*.12*i,22+i*4,0,7);g.fill()}
+    box(d.bbox,state.confirmed.has("fire")?css("--major"):css("--serious"),"烟雾")});
+  // 人员
+  for(const w of state.ws){const[x1,y1,x2,y2]=w.bbox,cx=(x1+x2)/2,h=y2-y1;
+    g.fillStyle="#3b4a5a";g.fillRect(cx-h*.1,y1+h*.55,h*.08,h*.45);g.fillRect(cx+h*.02,y1+h*.55,h*.08,h*.45); // 腿
+    g.fillStyle=w.vest?"#ff8a1c":"#4f6a86";g.fillRect(cx-h*.14,y1+h*.2,h*.28,h*.38); // 躯干
+    if(w.vest){g.fillStyle="#e8f1a0";g.fillRect(cx-h*.14,y1+h*.38,h*.28,h*.04)}
+    g.fillStyle="#d8b394";g.beginPath();g.arc(cx,y1+h*.1,h*.075,0,7);g.fill(); // 头
+    if(w.helmet){g.fillStyle="#ffd21f";g.beginPath();g.arc(cx,y1+h*.085,h*.085,Math.PI,0);g.fill();g.fillRect(cx-h*.1,y1+h*.08,h*.2,h*.02)}
+    else{g.fillStyle="#2a2522";g.beginPath();g.arc(cx,y1+h*.075,h*.07,Math.PI,0);g.fill()}
+    const sid=String(w.id),bad=w.helmet===false||w.vest===false;
+    const col=state.confirmed.has(sid)?css("--major"):(state.pending.has(sid)||bad)?css("--serious"):css("--ok");
+    const tags=[];if(w.helmet===false)tags.push("未戴帽");if(w.vest===false)tags.push("无背心");
+    box(w.bbox,col,`#${w.id} ${tags.join(" ")||"合规"}`)}
+}
+function box([x1,y1,x2,y2],col,label){g.strokeStyle=col;g.lineWidth=3;g.strokeRect(x1,y1,x2-x1,y2-y1);
+  g.font="600 17px 'Noto Sans SC'";const tw=g.measureText(label).width+10;g.fillStyle=col;g.fillRect(x1,y1-24,tw,22);g.fillStyle="#fff";g.fillText(label,x1+5,y1-7)}
+
+// ---------- 工单 ----------
+const FLOW=["待整改","整改中","待复查","已闭环"],LVC={"重大":"--major","较大":"--serious","一般":"--general"};
+const base=new Date(2026,9,17,9,0,0);
+const fmt=d=>`${d.getMonth()+1}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+let tickets=[],sel=null;
+function issue(h){const at=new Date(base.getTime()+h.ts*1000),dl=new Date(at.getTime()+h.level.deadline_hours*3600e3);
+  const t={no:`ZG20261017-${String(tickets.length+1).padStart(3,"0")}`,h,at,dl,status:"待整改",hist:[[fmt(at),"系统自动生成"]]};tickets.push(t);return t}
+function renderFeed(){const ol=document.getElementById("feed");document.getElementById("empty").hidden=tickets.length>0;
+  ol.innerHTML=tickets.slice().reverse().map(t=>`<li class="${t===sel?"sel":""}"><button data-no="${t.no}">
+    <span class="t num">${t.h.ts.toFixed(1)}s</span><span class="lv" style="background:var(${LVC[t.h.level.name]})">${t.h.level.name}</span>
+    <span class="ti">${t.h.title}</span><span class="st">${t.no} · ${t.status}</span></button></li>`).join("");
+  document.getElementById("sTotal").textContent=tickets.length;
+  document.getElementById("sMajor").textContent=tickets.filter(t=>t.h.level.name==="重大").length;
+  document.getElementById("sClosed").textContent=tickets.filter(t=>t.status==="已闭环").length}
+document.getElementById("feed").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;sel=tickets.find(t=>t.no===b.dataset.no);renderFeed();renderTicket();
+  document.getElementById("ticket").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"nearest"})});
+function renderTicket(){const el=document.getElementById("ticket");if(!sel){el.hidden=true;return}el.hidden=false;const t=sel,h=t.h,i=FLOW.indexOf(t.status);
+  const zone=h.zid?DATA.zones.find(z=>z.zone_id===h.zid).name:"—";
+  const acts={"待整改":`<button class="primary" data-a="next">开始整改</button>`,"整改中":`<button class="primary" data-a="next">提交复查</button>`,
+    "待复查":`<button class="primary" data-a="next">复查通过，闭环</button><button data-a="reject">复查不通过，退回</button>`,"已闭环":`<span style="color:var(--ok);font-weight:700">已闭环</span>`}[t.status];
+  el.innerHTML=`<h2>安全隐患整改通知单　<span class="num" style="font-weight:500;color:var(--muted)">${t.no}</span></h2>
+  <div class="body"><div><table>
+    <tr><th>隐患</th><td>${h.title}</td></tr>
+    <tr><th>等级</th><td><b style="color:var(${LVC[h.level.name]})">${h.level.name}</b>　风险分 <span class="num">${h.score.toFixed(1)}</span>，${h.level.action}</td></tr>
+    <tr><th>位置</th><td>${DATA.camera_id}　区域：${zone}${h.subj!=="fire"?`　人员 #${h.subj}`:""}</td></tr>
+    <tr><th>发现时间</th><td class="num">2026-${fmt(t.at)}</td></tr>
+    <tr><th>整改期限</th><td class="num">2026-${fmt(t.dl)}</td></tr>
+    <tr><th>依据</th><td>${h.standard}</td></tr></table></div>
+  <div><ol class="flow">${FLOW.map((s,k)=>`<li class="${k<i?"done":k===i?"cur":""}">${s}</li>`).join("")}</ol>
+    <h3>整改措施</h3><p>${h.measure}</p><div class="acts">${acts}</div>
+    <ul class="hist">${t.hist.map(([a,b])=>`<li><span class="num">${a}</span>　${b}</li>`).join("")}</ul></div></div>`}
+document.getElementById("ticket").addEventListener("click",e=>{const a=e.target.closest("button")?.dataset.a;if(!a||!sel)return;
+  const step=(sel.hist.length)*7;const at=fmt(new Date(sel.at.getTime()+step*60e3));
+  if(a==="next"){sel.status=FLOW[FLOW.indexOf(sel.status)+1];sel.hist.push([at,sel.status==="已闭环"?"复查通过":sel.status])}
+  else{sel.status="整改中";sel.hist.push([at,"复查未通过，退回整改"])}
+  renderFeed();renderTicket()});
+
+// ---------- 回放 ----------
+let engine,fi=0,playing=false,last=0;
+const seek=document.getElementById("seek"),playBtn=document.getElementById("play");
+document.getElementById("cam").textContent=DATA.camera_id;
+function reset(){engine=new Engine();fi=0;tickets=[];sel=null;renderFeed();renderTicket();step()}
+function step(){const f=DATA.frames[fi];const st=engine.process(f);
+  for(const h of st.out){const t=issue(h);if(!sel||h.level.name==="重大")sel=t}
+  if(st.out.length){renderFeed();renderTicket()}
+  drawScene(st,f);seek.value=f.ts;document.getElementById("clock").textContent=f.ts.toFixed(1)+"s";
+  document.getElementById("osdTime").textContent="2026-"+fmt(new Date(base.getTime()+f.ts*1000))}
+function loop(t){if(!playing)return;if(t-last>=1000/DATA.fps){last=t;if(fi<DATA.frames.length-1){fi++;step()}else{toggle(false)}}requestAnimationFrame(loop)}
+function toggle(on){playing=on;playBtn.textContent=on?"暂停":"播放";if(on){if(fi>=DATA.frames.length-1)reset();requestAnimationFrame(loop)}}
+playBtn.onclick=()=>toggle(!playing);
+document.getElementById("reset").onclick=()=>{toggle(false);reset()};
+seek.addEventListener("input",()=>{toggle(false);const target=+seek.value;if(target<DATA.frames[fi].ts)reset();while(fi<DATA.frames.length-1&&DATA.frames[fi].ts<target){fi++;step()}});
+// 时间轴上预先标出隐患时刻（用一遍引擎预跑）
+(function(){const e=new Engine(),m=document.getElementById("marks");for(const f of DATA.frames)for(const h of e.process(f).out){const i=document.createElement("i");
+  i.style.left=`calc(${h.ts/30*100}% - 1px)`;i.style.background=`var(${LVC[h.level.name]})`;m.appendChild(i)}})();
+document.fonts?.ready.then(()=>reset());reset();
+</script>
+</body>
+</html>
