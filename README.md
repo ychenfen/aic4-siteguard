@@ -66,6 +66,8 @@ pip install pytest && python -m pytest -q
 | `scripts/` | 生成演示数据、构建演示页、跑实验、画图、生成论文 Word 版 |
 | `docs/项目方案.md` | 初赛项目方案（简版） |
 | `docs/paper/论文.md` / `论文.docx` | 完整参赛论文（摘要、相关工作、方法、实验、讨论、参考文献） |
+| `docs/video/` | 带字幕的演示视频（约 65 秒）与配音解说词；`scripts/record_video.py` 可重新录制 |
+| `docs/提交清单.md` | 初赛提交材料清单与提交前待办 |
 
 修改规则或演示数据后，运行 `python scripts/make_sample.py && python scripts/build_demo.py` 重新生成演示页。
 
