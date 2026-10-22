@@ -48,10 +48,11 @@ CAPTION_JS = """
 """
 
 
-def card(kicker: str, title: str, lines: list[str], img: Path | None = None) -> str:
+def card(kicker: str, title: str, lines: list[str], img: Path | None = None, w: int = 1500) -> str:
     im = ""
     if img is not None:
-        im = f'<img src="data:image/png;base64,{base64.b64encode(img.read_bytes()).decode()}">'
+        im = (f'<img style="width:{w}px" '
+              f'src="data:image/png;base64,{base64.b64encode(img.read_bytes()).decode()}">')
     body = "".join(f"<p>{x}</p>" for x in lines)
     return (f"<html><head><meta charset='utf-8'><style>{CARD_CSS}</style></head><body><div class='tape'></div>"
             f"<div class='k'>{kicker}</div><h1>{title}</h1>{body}{im}</body></html>")
@@ -69,6 +70,25 @@ async def main() -> None:
         await pg.set_content(card("AIC4 · 人工智能+场景·建造 · 创新应用【青创学生组】", "筑安智检",
                                   ["施工现场安全隐患 AI 巡检与整改闭环系统", "演示：塔吊区监控 30 秒回放"]))
         await pg.wait_for_timeout(5000)
+
+        # 背景与方法（静态卡片，便于 3～5 分钟的完整讲解）
+        async def show(html: str, secs: float) -> None:
+            await pg.set_content(html)
+            await pg.wait_for_timeout(int(secs * 1000))
+
+        await show(card("问题", "报不准 · 管不住",
+                        ["2019 年全国房屋市政工程生产安全事故 773 起，其中高处坠落占 53.69%（住建部通报）",
+                         "现有 AI 安全帽识别多为逐帧报警：误报成堆，安全员逐渐不再看告警",
+                         "识别之后缺少整改流程：谁负责、几时整改、是否复查，都没有记录"]), 18)
+        await show(card("方法", "三层架构",
+                        ["感知：目标检测 → 人员—装备关联 → 多目标跟踪",
+                         "决策：规则判定 → 双条件时序确认 → 片段去重与风险分级",
+                         "应用：整改通知单 → 状态机闭环"],
+                        FIG / "fig_architecture.png", w=1300), 22)
+        await show(card("方法 · 双条件时序确认", "时长 且 占比",
+                        ["持续时长达标，且窗口内命中帧占比不低于 0.7，才确认违规",
+                         "零星误检串不成一段有效违规；真实违规中的少量漏判不影响确认"],
+                        FIG / "fig_confirmation.png", w=1300), 22)
 
         # 演示页
         await pg.goto(DEMO.as_uri())
@@ -113,15 +133,32 @@ async def main() -> None:
         await pg.wait_for_timeout(1000)
         await cap("")
 
-        # 实验结果 8 秒
-        await pg.set_content(card("仿真评估：20 个场景、3.3 小时", "误报 −96.1%",
-                                  ["与“逐帧 + 固定冷却”相比：每小时 1685.4 次 → 65.1 次；召回率 0.859 → 0.962"],
-                                  FIG / "fig_strategy_compare.png"))
-        await pg.wait_for_timeout(8000)
-        # 片尾 4 秒
-        await pg.set_content(card("筑安智检", "谢谢观看",
-                                  ["双条件时序确认 · 片段级去重 · 复合风险升级 · 规范驱动的整改闭环"]))
-        await pg.wait_for_timeout(4000)
+        # 去重与复合升级（静态卡片）
+        await show(card("方法", "只报一次 · 高危升级",
+                        ["一段连续违规只告警一次；持续超过 300 秒仍未消除，才再次提醒",
+                         "同一人员同时确认“未戴安全帽”与“进入塔吊区”，升级为“重大”告警，要求立即停工"]), 15)
+
+        # 实验结果
+        await show(card("仿真评估：20 个场景、3.3 小时", "误报 −96.1%",
+                        ["与“逐帧 + 固定冷却”相比：每小时 1685.4 次 → 65.1 次；召回率 0.859 → 0.962"],
+                        FIG / "fig_strategy_compare.png"), 12)
+        await show(card("仿真评估 · 参数敏感性", "确认时长决定权衡",
+                        ["确认时长放大时误报迅速下降，但召回率与时延随之变差",
+                         "默认配置处于拐点附近：误报约 67 次/小时，召回率 0.94，时延 2.9 秒"],
+                        FIG / "fig_sweep.png", w=1300), 15)
+        await show(card("仿真评估 · 鲁棒性", "检测器更差，告警仍可控",
+                        ["检测误差强度 k=3 时，逐帧加冷却的误报升至每小时约 1 万次",
+                         "本文方法仍保持在每小时约 40 次，精确率不低于 0.92"],
+                        FIG / "fig_noise.png", w=1300), 15)
+
+        # 局限与下一步
+        await show(card("局限与计划", "诚实地说边界",
+                        ["定量结论来自仿真，检测模型尚未在真实工地数据上训练",
+                         "下一步：用 SHWD 数据集训练 YOLO，真实视频人工标注验证，合作工地试点"]), 20)
+
+        # 片尾
+        await show(card("筑安智检", "谢谢观看",
+                        ["双条件时序确认 · 片段级去重 · 复合风险升级 · 规范驱动的整改闭环"]), 5)
         await ctx.close()
         await b.close()
 
